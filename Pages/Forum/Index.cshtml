@@ -1,0 +1,422 @@
+@page
+@model ForoAttritionErrorWeb.Pages.Forum.IndexModel
+@{
+    ViewData["Title"] = "Forum";
+    ViewData["ContainerClass"] = "page-container-wide";
+    var isAuthenticated = User?.Identity?.IsAuthenticated ?? false;
+    var errorCodeEndpoint = Url.Page("/Forum/Index", "ErrorCodes");
+}
+
+<div class="forum-header">
+    <h1>Forum</h1>
+    <div class="forum-subtitle">Create posts, browse questions, and reply to others.</div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
+}
+
+<div class="forum-grid">
+    <div class="forum-left">
+        <details class="card" open>
+            <summary class="card-summary">Publish a post</summary>
+
+            <div class="card-body">
+                @if (!isAuthenticated)
+                {
+                    <div class="alert" role="alert">
+                        You are viewing as a guest. Please <a asp-page="/Account/Login" asp-route-returnUrl="@Url.Page("/Forum/Index")">login</a> to publish posts, create categories, or reply.
+                    </div>
+                }
+                else
+                {
+                    <form id="createPostForm" method="post" asp-page-handler="CreatePost" class="stack">
+                        <div class="field">
+                            <label asp-for="NewPost.MachineTypeSelection" class="label"></label>
+                            <select asp-for="NewPost.MachineTypeSelection" class="input" id="machineTypeSelect">
+                                <option value="">Select a machine type</option>
+                                @foreach (var mt in Model.MachineTypeList)
+                                {
+                                    <option value="@mt">@mt</option>
+                                }
+                                <option value="__OTHER__">Other</option>
+                            </select>
+                            <span asp-validation-for="NewPost.MachineTypeSelection" class="error-text"></span>
+                        </div>
+
+                        <div class="field" id="machineTypeOtherField" hidden>
+                            <label asp-for="NewPost.MachineTypeOther" class="label">Machine Type (Other)</label>
+                            <input asp-for="NewPost.MachineTypeOther" class="input" placeholder="Type the machine type..." />
+                            <span asp-validation-for="NewPost.MachineTypeOther" class="error-text"></span>
+                        </div>
+
+                        <div class="field">
+                            <label asp-for="NewPost.ErrorCode" class="label"></label>
+                            <div class="stack" style="gap: 8px;">
+                                <div class="combo" id="errorCodeCombo" data-combo="errorcode" data-allow-other="true" data-endpoint="@errorCodeEndpoint" data-machine-type-selector="#machineTypeSelect">
+                                    <input asp-for="NewPost.ErrorCode" class="input combo-like-select combo-input" placeholder="Search error code..." autocomplete="off" />
+                                    <div class="combo-panel" hidden>
+                                        <div class="combo-search">
+                                            <input type="text" class="input combo-search-input" placeholder="Type to filter..." autocomplete="off" />
+                                        </div>
+                                        <div class="combo-options" role="listbox"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <span asp-validation-for="NewPost.ErrorCode" class="error-text"></span>
+                        </div>
+
+                        <div class="field">
+                            <label asp-for="NewPost.Title" class="label"></label>
+                            <input asp-for="NewPost.Title" class="input" />
+                            <span asp-validation-for="NewPost.Title" class="error-text"></span>
+                        </div>
+
+                        <div class="field">
+                            <label asp-for="NewPost.BodyHtml" class="label">Body</label>
+
+                            <div class="editor-toolbar" role="group" aria-label="Formatting toolbar">
+                                <button type="button" class="btn btn-tool" data-cmd="bold"><b>B</b></button>
+                                <button type="button" class="btn btn-tool" data-cmd="italic"><i>I</i></button>
+                                <button type="button" class="btn btn-tool" data-cmd="underline"><u>U</u></button>
+                                <input type="color" class="color-picker" title="Text color" value="#005288" />
+                                <button type="button" class="btn btn-tool" data-cmd="applyColor">Apply</button>
+                            </div>
+
+                            <div id="postEditor" class="editor" contenteditable="true" aria-label="Post editor"></div>
+                            <input type="hidden" asp-for="NewPost.BodyHtml" id="postBodyHtml" />
+                            <span asp-validation-for="NewPost.BodyHtml" class="error-text"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Publish</button>
+                    </form>
+                }
+            </div>
+        </details>
+    </div>
+
+    <div class="forum-right">
+        <div class="card">
+            <div class="card-title">Posts</div>
+            <div class="card-body">
+                @if (Model.PostList.Count == 0)
+                {
+                    <div>No posts found.</div>
+                }
+                else
+                {
+                    <div class="post-list">
+                        @foreach (var p in Model.PostList)
+                        {
+                            <a class="post-item" asp-page="/Forum/Post" asp-route-idp="@p.Id">
+                                <div class="post-meta">
+                                    <span class="post-user">@p.UserMail</span>
+                                    <span class="post-sep">|</span>
+                                    <span class="post-cat">@p.MachineType</span>
+                                    <span class="post-sep">|</span>
+                                    <span class="post-cat">@p.ErrorCode</span>
+                                    <span class="post-sep">|</span>
+                                    <span class="post-date">@p.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                                </div>
+                                <div class="post-title">@p.Title</div>
+                                <div class="post-body">@Model.Excerpt(p.BodyHtml)</div>
+                            </a>
+                        }
+                    </div>
+
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div class="forum-pager" aria-label="Pagination">
+                            @if (Model.HasPreviousPage)
+                            {
+                                <a class="btn forum-pager-btn"
+                                   asp-page="/Forum/Index"
+                                   asp-route-PageNumber="@(Model.PageNumber - 1)"
+                                   asp-route-MachineType="@Model.MachineType"
+                                   asp-route-ErrorCode="@Model.ErrorCode"
+                                   asp-route-UserMail="@Model.UserMail"
+                                   asp-route-TitleKeywords="@Model.TitleKeywords"
+                                   aria-label="Previous page">&larr;</a>
+                            }
+                            else
+                            {
+                                <span class="btn forum-pager-btn is-disabled" aria-disabled="true">&larr;</span>
+                            }
+
+                            <span class="forum-pager-status">@Model.PageNumber / @Model.TotalPages</span>
+
+                            @if (Model.HasNextPage)
+                            {
+                                <a class="btn forum-pager-btn"
+                                   asp-page="/Forum/Index"
+                                   asp-route-PageNumber="@(Model.PageNumber + 1)"
+                                   asp-route-MachineType="@Model.MachineType"
+                                   asp-route-ErrorCode="@Model.ErrorCode"
+                                   asp-route-UserMail="@Model.UserMail"
+                                   asp-route-TitleKeywords="@Model.TitleKeywords"
+                                   aria-label="Next page">&rarr;</a>
+                            }
+                            else
+                            {
+                                <span class="btn forum-pager-btn is-disabled" aria-disabled="true">&rarr;</span>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="forum-search">
+        <div class="card">
+            <div class="card-title">Search</div>
+            <div class="card-body">
+                <form method="get" class="stack">
+                    <div class="field">
+                        <label class="label">Machine Type</label>
+                        <select name="MachineType" class="input" id="searchMachineTypeSelect">
+                            <option value="">All machine types</option>
+                            @foreach (var mt in Model.MachineTypeList)
+                            {
+                                <option value="@mt" selected="@(string.Equals(Model.MachineType, mt, StringComparison.OrdinalIgnoreCase))">@mt</option>
+                            }
+                            <option value="__OTHER__" selected="@(string.Equals(Model.MachineType, "__OTHER__", StringComparison.Ordinal))">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="field" id="searchMachineTypeOtherField" hidden>
+                        <label class="label">Machine Type (Other)</label>
+                        <input name="MachineTypeOther" class="input" value="@Model.MachineTypeOther" placeholder="Type the machine type..." />
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Error Code</label>
+                        <div class="combo" data-combo="errorcode" data-allow-other="true" data-endpoint="@errorCodeEndpoint" data-machine-type-selector="#searchMachineTypeSelect">
+                            <input name="ErrorCode" class="input combo-like-select combo-input" value="@Model.ErrorCode" placeholder="Search error code..." autocomplete="off" />
+                            <div class="combo-panel" hidden>
+                                <div class="combo-search">
+                                    <input type="text" class="input combo-search-input" placeholder="Type to filter..." autocomplete="off" />
+                                </div>
+                                <div class="combo-options" role="listbox"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">User (email)</label>
+                        <input name="UserMail" class="input" value="@Model.UserMail" placeholder="mail contains..." />
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Title keywords</label>
+                        <input name="TitleKeywords" class="input" value="@Model.TitleKeywords" placeholder="keywords similar to Ctrl+F" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @if (isAuthenticated)
+    {
+        <script>
+            (function () {
+                const mtSelect = document.getElementById('machineTypeSelect');
+                const mtOtherField = document.getElementById('machineTypeOtherField');
+
+                function toggleMachineTypeOther() {
+                    if (!mtSelect || !mtOtherField) return;
+                    const isOther = mtSelect.value === '__OTHER__';
+                    mtOtherField.hidden = !isOther;
+                }
+
+                if (mtSelect) {
+                    mtSelect.addEventListener('change', toggleMachineTypeOther);
+                    toggleMachineTypeOther();
+                }
+
+                const editor = document.getElementById('postEditor');
+                const hidden = document.getElementById('postBodyHtml');
+                const toolbar = document.querySelector('.editor-toolbar');
+                const colorPicker = document.querySelector('.color-picker');
+                const form = document.getElementById('createPostForm');
+
+                if (!editor || !hidden || !toolbar || !colorPicker || !form) return;
+
+                function sync() {
+                    hidden.value = editor.innerHTML || '';
+                }
+
+                toolbar.addEventListener('click', function (e) {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+                    const cmd = btn.getAttribute('data-cmd');
+
+                    editor.focus();
+
+                    if (cmd === 'applyColor') {
+                        document.execCommand('foreColor', false, colorPicker.value);
+                    } else {
+                        document.execCommand(cmd, false, null);
+                    }
+
+                    sync();
+                });
+
+                editor.addEventListener('input', sync);
+                form.addEventListener('submit', sync);
+            })();
+        </script>
+    }
+
+    <script>
+        (function () {
+            const combos = Array.from(document.querySelectorAll('.combo[data-combo="errorcode"]'));
+            if (combos.length === 0) return;
+
+            // Search form: show Machine Type (Other) textbox only when selected.
+            const searchMtSelect = document.getElementById('searchMachineTypeSelect');
+            const searchMtOtherField = document.getElementById('searchMachineTypeOtherField');
+            function toggleSearchMachineTypeOther() {
+                if (!searchMtSelect || !searchMtOtherField) return;
+                const isOther = searchMtSelect.value === '__OTHER__';
+                searchMtOtherField.hidden = !isOther;
+            }
+            if (searchMtSelect) {
+                searchMtSelect.addEventListener('change', toggleSearchMachineTypeOther);
+                toggleSearchMachineTypeOther();
+            }
+
+            function debounce(fn, wait) {
+                let t;
+                return function (...args) {
+                    clearTimeout(t);
+                    t = setTimeout(() => fn.apply(this, args), wait);
+                };
+            }
+
+            async function fetchOptions(endpoint, machineType, q) {
+                const url = new URL(endpoint, window.location.origin);
+                if (machineType) url.searchParams.set('machineType', machineType);
+                if (q) url.searchParams.set('q', q);
+                const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return [];
+                return await res.json();
+            }
+
+            function closePanel(combo) {
+                const panel = combo.querySelector('.combo-panel');
+                if (panel) panel.hidden = true;
+            }
+
+            function openPanel(combo) {
+                const panel = combo.querySelector('.combo-panel');
+                if (panel) panel.hidden = false;
+            }
+
+            function renderOptions(combo, options) {
+                const list = combo.querySelector('.combo-options');
+                if (!list) return;
+                list.innerHTML = '';
+
+                const allowOther = (combo.getAttribute('data-allow-other') || '').toLowerCase() === 'true';
+                if (allowOther) {
+                    const otherItem = document.createElement('button');
+                    otherItem.type = 'button';
+                    otherItem.className = 'combo-option';
+                    otherItem.textContent = 'Other';
+                    otherItem.addEventListener('click', () => {
+                        const input = combo.querySelector('.combo-input');
+                        if (input) input.value = 'Other';
+                        closePanel(combo);
+                    });
+                    list.appendChild(otherItem);
+                }
+
+                if (!options || options.length === 0) {
+                    if (!allowOther) {
+                        const empty = document.createElement('div');
+                        empty.className = 'combo-option combo-option-empty';
+                        empty.textContent = 'No results';
+                        list.appendChild(empty);
+                    }
+                    return;
+                }
+                for (const v of options) {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'combo-option';
+                    item.textContent = v;
+                    item.addEventListener('click', () => {
+                        const input = combo.querySelector('.combo-input');
+                        if (input) input.value = v;
+                        closePanel(combo);
+                    });
+                    list.appendChild(item);
+                }
+            }
+
+            for (const combo of combos) {
+                const endpoint = combo.getAttribute('data-endpoint');
+                const input = combo.querySelector('.combo-input');
+                const search = combo.querySelector('.combo-search-input');
+                const machineTypeSelector = combo.getAttribute('data-machine-type-selector');
+                const machineTypeEl = machineTypeSelector ? document.querySelector(machineTypeSelector) : null;
+
+                if (!endpoint || !input || !search) continue;
+
+                // NOTE: Selecting 'Other' just sets input value to 'Other'.
+
+                const refresh = debounce(async () => {
+                    const rawMt = machineTypeEl ? (machineTypeEl.value || '').trim() : '';
+                    const mt = rawMt === '__OTHER__' ? '' : rawMt;
+                    const q = (search.value || '').trim();
+                    const options = await fetchOptions(endpoint, mt, q);
+                    renderOptions(combo, options);
+                }, 200);
+
+                input.addEventListener('focus', async () => {
+                    openPanel(combo);
+                    search.value = '';
+                    await refresh();
+                    search.focus();
+                });
+
+                input.addEventListener('click', async () => {
+                    openPanel(combo);
+                    await refresh();
+                });
+
+                search.addEventListener('input', refresh);
+
+                if (machineTypeEl) {
+                    machineTypeEl.addEventListener('change', async () => {
+                        // Clear current value when machine changes; keeps cascade consistent.
+                        input.value = '';
+                        search.value = '';
+                        if (!combo.querySelector('.combo-panel')?.hidden) {
+                            await refresh();
+                        }
+                    });
+                }
+
+                document.addEventListener('click', (e) => {
+                    if (!combo.contains(e.target)) {
+                        closePanel(combo);
+                    }
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        closePanel(combo);
+                    }
+                });
+            }
+        })();
+    </script>
+}

@@ -1,0 +1,139 @@
+@page
+@model ForoAttritionErrorWeb.Pages.Forum.PostModel
+@{
+    ViewData["Title"] = "Post";
+    var isAuthenticated = User?.Identity?.IsAuthenticated ?? false;
+}
+
+<div class="forum-header">
+    <div class="forum-back">
+        <a asp-page="/Forum/Index">&larr; Back to forum</a>
+    </div>
+    <h1>Post</h1>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
+}
+
+@if (Model.Post is not null)
+{
+    <div class="card">
+        <div class="card-title">@Model.Post.Title</div>
+        <div class="card-body">
+            <div class="post-meta">
+                <span class="post-user">@Model.Post.UserMail</span>
+                <span class="post-sep">|</span>
+                <span class="post-cat">@Model.Post.MachineType</span>
+                <span class="post-sep">|</span>
+                <span class="post-cat">@Model.Post.ErrorCode</span>
+                <span class="post-sep">|</span>
+                <span class="post-date">@Model.Post.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+            </div>
+            <div class="post-detail-body">@Html.Raw(Model.Post.BodyHtml)</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Replies</div>
+        <div class="card-body">
+            @if (Model.AnswerList.Count == 0)
+            {
+                <div>No replies yet.</div>
+            }
+            else
+            {
+                <div class="answer-list">
+                    @foreach (var a in Model.AnswerList)
+                    {
+                        <div class="answer-item">
+                            <div class="post-meta">
+                                <span class="post-user">@a.UserMail</span>
+                                <span class="post-sep">|</span>
+                                <span class="post-date">@a.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                            </div>
+                            <div class="answer-body">@Html.Raw(a.AnswerHtml)</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Write a reply</div>
+        <div class="card-body">
+            @if (!isAuthenticated)
+            {
+                <div class="alert" role="alert">
+                    You are viewing as a guest. Please <a asp-page="/Account/Login" asp-route-returnUrl="@Url.Page("/Forum/Post", new { idp = Model.Idp })">login</a> to reply.
+                </div>
+            }
+            else
+            {
+                <form id="answerForm" method="post" asp-page-handler="Answer" class="stack">
+                    <input type="hidden" asp-for="Idp" />
+                    <div class="field">
+                        <label asp-for="NewAnswer.AnswerHtml" class="label">Answer</label>
+
+                        <div class="editor-toolbar" role="group" aria-label="Formatting toolbar">
+                            <button type="button" class="btn btn-tool" data-cmd="bold"><b>B</b></button>
+                            <button type="button" class="btn btn-tool" data-cmd="italic"><i>I</i></button>
+                            <button type="button" class="btn btn-tool" data-cmd="underline"><u>U</u></button>
+                            <input type="color" class="color-picker" title="Text color" value="#005288" />
+                            <button type="button" class="btn btn-tool" data-cmd="applyColor">Apply</button>
+                        </div>
+
+                        <div id="answerEditor" class="editor" contenteditable="true" aria-label="Answer editor"></div>
+                        <input type="hidden" asp-for="NewAnswer.AnswerHtml" id="answerHtml" />
+                        <span asp-validation-for="NewAnswer.AnswerHtml" class="error-text"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Reply</button>
+                </form>
+            }
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @if (isAuthenticated)
+    {
+        <script>
+            (function () {
+                const editor = document.getElementById('answerEditor');
+                const hidden = document.getElementById('answerHtml');
+                const toolbar = document.querySelector('.editor-toolbar');
+                const colorPicker = document.querySelector('.color-picker');
+                const form = document.getElementById('answerForm');
+
+                if (!editor || !hidden || !toolbar || !colorPicker || !form) return;
+
+                function sync() {
+                    hidden.value = editor.innerHTML || '';
+                }
+
+                toolbar.addEventListener('click', function (e) {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+                    const cmd = btn.getAttribute('data-cmd');
+
+                    editor.focus();
+
+                    if (cmd === 'applyColor') {
+                        document.execCommand('foreColor', false, colorPicker.value);
+                    } else {
+                        document.execCommand(cmd, false, null);
+                    }
+
+                    sync();
+                });
+
+                editor.addEventListener('input', sync);
+                form.addEventListener('submit', sync);
+            })();
+        </script>
+    }
+}

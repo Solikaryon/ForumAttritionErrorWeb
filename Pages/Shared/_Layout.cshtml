@@ -1,0 +1,56 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+@using System.Security.Claims
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ForoAttritionErrorWeb</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ForoAttritionErrorWeb.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="jabil-navbar">
+            <div class="page-container nav-row">
+                <a class="brand" asp-area="" asp-page="/Forum/Index">
+                    <img class="brand-logo" src="~/images/Jabil.svg" alt="Jabil" />
+                    <span>Attrition Error - Forum</span>
+                </a>
+                <div class="nav-links">
+                    <a class="nav-link" asp-area="" asp-page="/Forum/Index">Forum</a>
+                    @if (User?.Identity?.IsAuthenticated ?? false)
+                    {
+                        <span class="nav-status">Logged in: @(User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name)</span>
+                        <form class="nav-form" method="post" asp-page="/Account/Logout">
+                            <button type="submit" class="nav-link nav-button">Logout</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="nav-status">Guest (view only)</span>
+                        <a class="nav-link" asp-area="" asp-page="/Account/Login">Login</a>
+                        <a class="nav-link" asp-area="" asp-page="/Account/Register">Create account</a>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="page-container @(ViewData["ContainerClass"] as string)">
+        <main role="main" class="page-main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="jabil-footer">
+        <div class="page-container">
+            <div>&copy; 2026 - Attrition Error Forum</div>
+            <div class="footer-created-by">Created by: Luis Fernando Monjaraz Briseño | <a href="mailto:Luis_Monjaraz@Jabil.com">Luis_Monjaraz@Jabil.com</a></div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

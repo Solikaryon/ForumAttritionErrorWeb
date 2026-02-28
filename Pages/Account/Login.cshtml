@@ -1,0 +1,42 @@
+@page
+@model ForoAttritionErrorWeb.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-title">Login</div>
+
+        <form method="post" class="auth-form">
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div class="field">
+                <label asp-for="Input.Mail" class="label"></label>
+                <input asp-for="Input.Mail" class="input" autocomplete="username" />
+                <span asp-validation-for="Input.Mail" class="error-text"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Input.Password" class="label"></label>
+                <input asp-for="Input.Password" class="input" autocomplete="current-password" />
+                <span asp-validation-for="Input.Password" class="error-text"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+
+            <div class="auth-links">
+                <a asp-page="/Account/Register">Create an account</a>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
+            }
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
